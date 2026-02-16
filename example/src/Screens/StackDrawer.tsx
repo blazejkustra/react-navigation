@@ -1,40 +1,50 @@
-import { Button } from '@react-navigation/elements';
 import type {
+  EventArg,
+  NavigationProp,
   NavigatorScreenParams,
   PathConfig,
+  ScreenLayoutArgs,
   StaticScreenProps,
 } from '@react-navigation/native';
 import {
   createStackNavigator,
   type StackCardInterpolationProps,
+  type StackNavigationOptions,
   type StackScreenProps,
 } from '@react-navigation/stack';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-
-import { COMMON_LINKING_CONFIG } from '../constants';
-import { Albums } from '../Shared/Albums';
-import { Article } from '../Shared/Article';
-import { NewsFeed } from '../Shared/NewsFeed';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 const DRAWER_WIDTH_RATIO = 0.75;
+
+type NestedStackParamList = {
+  NestedHome: undefined;
+  NestedDetail: undefined;
+};
 
 type StackDrawerParamList = {
   DrawerHome: undefined;
   Article: { author: string } | undefined;
   Albums: undefined;
   NewsFeed: { date: number };
+  Nested: NavigatorScreenParams<NestedStackParamList>;
 };
 
 const linking = {
   screens: {
     DrawerHome: 'drawer-home',
-    Article: COMMON_LINKING_CONFIG.Article,
-    NewsFeed: COMMON_LINKING_CONFIG.NewsFeed,
+    Article: 'article',
+    NewsFeed: 'news-feed',
     Albums: 'albums',
+    Nested: {
+      path: 'nested',
+      screens: {
+        NestedHome: 'home',
+        NestedDetail: 'detail',
+      },
+    },
   },
 } satisfies PathConfig<NavigatorScreenParams<StackDrawerParamList>>;
-
-const scrollEnabled = Platform.select({ web: true, default: false });
 
 function forDrawerSlide({
   current,
@@ -66,25 +76,32 @@ const DrawerHomeScreen = ({
   return (
     <View style={styles.container}>
       <View style={styles.buttons}>
-        <Button
-          variant="filled"
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('Article', { author: 'Gandalf' })}
+        >
+          <Text style={styles.buttonText}>Open Article</Text>
+        </Pressable>
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('Albums')}
+        >
+          <Text style={styles.buttonText}>Open Albums</Text>
+        </Pressable>
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('NewsFeed', { date: Date.now() })}
+        >
+          <Text style={styles.buttonText}>Open News Feed</Text>
+        </Pressable>
+        <Pressable
+          style={styles.button}
           onPress={() =>
-            navigation.navigate('Article', { author: 'Gandalf' })
+            navigation.navigate('Nested', { screen: 'NestedHome' })
           }
         >
-          Open Article
-        </Button>
-        <Button variant="filled" onPress={() => navigation.navigate('Albums')}>
-          Open Albums
-        </Button>
-        <Button
-          variant="filled"
-          onPress={() =>
-            navigation.navigate('NewsFeed', { date: Date.now() })
-          }
-        >
-          Open News Feed
-        </Button>
+          <Text style={styles.buttonText}>Open Nested Stack</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -98,20 +115,17 @@ const ArticleScreen = ({
     <View style={styles.contentScreen}>
       <Pressable style={styles.overlay} onPress={() => navigation.goBack()} />
       <View style={styles.contentPanel}>
-        <ScrollView>
-          <View style={styles.buttons}>
-            <Button
-              variant="tinted"
-              onPress={() => navigation.popTo('DrawerHome')}
-            >
-              Back to drawer
-            </Button>
-          </View>
-          <Article
-            author={{ name: route.params?.author ?? 'Unknown' }}
-            scrollEnabled={scrollEnabled}
-          />
-        </ScrollView>
+        <View style={styles.buttons}>
+          <Pressable
+            style={styles.button}
+            onPress={() => navigation.popTo('DrawerHome')}
+          >
+            <Text style={styles.buttonText}>Back to drawer</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.screenText}>
+          Article by {route.params?.author ?? 'Unknown'}
+        </Text>
       </View>
     </View>
   );
@@ -124,17 +138,15 @@ const AlbumsScreen = ({
     <View style={styles.contentScreen}>
       <Pressable style={styles.overlay} onPress={() => navigation.goBack()} />
       <View style={styles.contentPanel}>
-        <ScrollView>
-          <View style={styles.buttons}>
-            <Button
-              variant="tinted"
-              onPress={() => navigation.popTo('DrawerHome')}
-            >
-              Back to drawer
-            </Button>
-          </View>
-          <Albums scrollEnabled={scrollEnabled} />
-        </ScrollView>
+        <View style={styles.buttons}>
+          <Pressable
+            style={styles.button}
+            onPress={() => navigation.popTo('DrawerHome')}
+          >
+            <Text style={styles.buttonText}>Back to drawer</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.screenText}>Albums</Text>
       </View>
     </View>
   );
@@ -148,17 +160,17 @@ const NewsFeedScreen = ({
     <View style={styles.contentScreen}>
       <Pressable style={styles.overlay} onPress={() => navigation.goBack()} />
       <View style={styles.contentPanel}>
-        <ScrollView>
-          <View style={styles.buttons}>
-            <Button
-              variant="tinted"
-              onPress={() => navigation.popTo('DrawerHome')}
-            >
-              Back to drawer
-            </Button>
-          </View>
-          <NewsFeed scrollEnabled={scrollEnabled} date={route.params.date} />
-        </ScrollView>
+        <View style={styles.buttons}>
+          <Pressable
+            style={styles.button}
+            onPress={() => navigation.popTo('DrawerHome')}
+          >
+            <Text style={styles.buttonText}>Back to drawer</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.screenText}>
+          News Feed - {new Date(route.params.date).toLocaleString()}
+        </Text>
       </View>
     </View>
   );
@@ -179,20 +191,132 @@ const drawerScreenOptions = {
 };
 
 const StackNavigator = createStackNavigator<StackDrawerParamList>();
+const NestedNavigator = createStackNavigator<NestedStackParamList>();
+
+const NestedHomeScreen = ({
+  navigation,
+}: StackScreenProps<NestedStackParamList, 'NestedHome'>) => {
+  return (
+    <View style={styles.container}>
+      <View style={styles.buttons}>
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('NestedDetail')}
+        >
+          <Text style={styles.buttonText}>Open Nested Detail</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+const NestedDetailScreen = ({
+  navigation,
+}: StackScreenProps<NestedStackParamList, 'NestedDetail'>) => {
+  return (
+    <View style={styles.container}>
+      <View style={styles.buttons}>
+        <Pressable style={styles.button} onPress={() => navigation.goBack()}>
+          <Text style={styles.buttonText}>Back to Nested Home</Text>
+        </Pressable>
+      </View>
+      <Text style={styles.screenText}>Nested Detail Screen</Text>
+    </View>
+  );
+};
+
+const NestedLayout = ({
+  children,
+  navigation,
+}: ScreenLayoutArgs<
+  NestedStackParamList,
+  keyof NestedStackParamList,
+  StackNavigationOptions,
+  NavigationProp<NestedStackParamList>
+>) => {
+  useEffect(() => {
+    const transitionStartListener = navigation.addListener(
+      'transitionStart',
+      (e: EventArg<'transitionStart', true>) => {
+        console.log('[Nested] transitionStart', e.data);
+      }
+    );
+    const transitionEndListener = navigation.addListener(
+      'transitionEnd',
+      (e: EventArg<'transitionEnd', true>) => {
+        console.log('[Nested] transitionEnd', e.data);
+      }
+    );
+
+    return () => {
+      transitionStartListener();
+      transitionEndListener();
+    };
+  }, [navigation]);
+
+  return children;
+};
+
+const NestedStack = () => {
+  return (
+    <NestedNavigator.Navigator
+      screenLayout={(props) => <NestedLayout {...props} />}
+    >
+      <NestedNavigator.Screen
+        name="NestedHome"
+        component={NestedHomeScreen}
+        options={{ title: 'Nested Home' }}
+      />
+      <NestedNavigator.Screen
+        name="NestedDetail"
+        component={NestedDetailScreen}
+        options={{
+          ...drawerScreenOptions,
+          title: 'Nested Detail',
+        }}
+      />
+    </NestedNavigator.Navigator>
+  );
+};
+
+const ContentLayout = ({
+  children,
+  navigation,
+}: ScreenLayoutArgs<
+  StackDrawerParamList,
+  keyof StackDrawerParamList,
+  StackNavigationOptions,
+  NavigationProp<StackDrawerParamList>
+>) => {
+  useEffect(() => {
+    const transitionStartListener = navigation.addListener(
+      'transitionStart',
+      (e: EventArg<'transitionStart', true>) => {
+        console.log('transitionStart', e.data);
+      }
+    );
+    const transitionEndListener = navigation.addListener(
+      'transitionEnd',
+      (e: EventArg<'transitionEnd', true>) => {
+        console.log('transitionEnd', e.data);
+      }
+    );
+
+    return () => {
+      transitionStartListener();
+      transitionEndListener();
+    };
+  }, [navigation]);
+
+  return children;
+};
 
 export function StackDrawer(
   _: StaticScreenProps<NavigatorScreenParams<StackDrawerParamList>>
 ) {
   return (
     <StackNavigator.Navigator
-      screenListeners={{
-        transitionStart: (e) => {
-          console.log('transitionStart', e.data);
-        },
-        transitionEnd: (e) => {
-          console.log('transitionEnd', e.data);
-        },
-      }}
+      screenLayout={(props) => <ContentLayout {...props} />}
     >
       <StackNavigator.Screen
         name="DrawerHome"
@@ -223,6 +347,14 @@ export function StackDrawer(
           title: 'Feed',
         }}
       />
+      <StackNavigator.Screen
+        name="Nested"
+        component={NestedStack}
+        options={{
+          ...drawerScreenOptions,
+          title: 'Nested Stack',
+        }}
+      />
     </StackNavigator.Navigator>
   );
 }
@@ -240,6 +372,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     margin: 12,
+  },
+  button: {
+    backgroundColor: '#6200ee',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  screenText: {
+    fontSize: 18,
+    margin: 16,
   },
   contentScreen: {
     flex: 1,
